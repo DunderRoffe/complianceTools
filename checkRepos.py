@@ -5,7 +5,7 @@ import argparse
 
 def parseRepo(repo):
     """
-    Scans a given repository and returns reasons for why it might needs lookin into
+    Scans a given repository and returns reasons for why it might need looking into
     """
     contents_response = requests.get(repo['contents_url'][:-7])
     contents_data = contents_response.json()
@@ -48,8 +48,8 @@ def parseOrganization(organization):
 
 
 if __name__=="__main__":
-    parser = argparse.ArgumentParser(description='Scan a GitHub organization for repos which might need to be looked at.')
-    parser.add_argument('organization', type=str, help='The GitHub organizaion to scan')
+    parser = argparse.ArgumentParser(description='Scan a GitHub organization for repos without READMEs or CONTRIBUTION pages.')
+    parser.add_argument('organization', type=str, help='The GitHub organization to scan')
 
     args = parser.parse_args()
     print(parseOrganization(args.organization))
