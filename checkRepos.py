@@ -2,6 +2,7 @@
 
 import requests
 import argparse
+import json
 
 def parseRepo(repo):
     """
@@ -30,21 +31,27 @@ def parseOrganization(organization):
 
     # Due to limitations in the Github API this might not work
     if repos_response.status_code == 403:
-         return "{}\n{}\n".format(repos_data['message'], repos_data['documentation_url']) 
+         return repos_data
 
 
     try:
-        # entries should follow this pattern: ("full_name", "url", "reason for being suspect")
+        # Entries should follow this pattern: {"name": "Misbehaving repo",
+        #                                      "url":  "https://github.com/org/repo",
+        #                                      "reasons": ["reason for being suspect" ...]}
         suspects = []
         for repo in repos_data:
             reasons = parseRepo(repo)
             if len(reasons) > 0:
-                suspects.append((repo['full_name'], repo['url'], reasons))
+                suspect = dict()
+                suspect['name'] = repo['name']
+                suspect['url']  = repo['url']
+                suspect['reasons'] = reasons
+                suspects.append(suspect)
 
         return suspects
     except:
-        return "Something went wrong in the parsing. The most likely reason is that the API call" \
-               " limit was reached, please try again later."
+        return {'message': "Something went wrong in the parsing. The most likely reason is that the API call" \
+               " limit was reached, please try again later."}
 
 
 if __name__=="__main__":
@@ -52,4 +59,8 @@ if __name__=="__main__":
     parser.add_argument('organization', type=str, help='The GitHub organization to scan')
 
     args = parser.parse_args()
-    print(parseOrganization(args.organization))
+    result = parseOrganization(args.organization)
+
+    # JSON formatting
+    result = json.dumps(result)
+    print(result)
