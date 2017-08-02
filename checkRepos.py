@@ -57,6 +57,8 @@ def parseOrganization(organization):
 if __name__=="__main__":
     parser = argparse.ArgumentParser(description='Scan a GitHub organization for repos without READMEs or CONTRIBUTION pages.')
     parser.add_argument('organization', type=str, help='The GitHub organization to scan')
+    parser.add_argument('--file', type=str, default=None, help='Specify name of file to write the output to.' \
+            'If not specified, the output will be written to stdout.')
     parser.add_argument('--pretty', action='store_true', help='Pretty print the output.')
 
     args = parser.parse_args()
@@ -70,4 +72,10 @@ if __name__=="__main__":
 
     # JSON formatting
     result = json.dumps(result, indent=indent)
-    print(result)
+
+    # Output result
+    if args.file is None:
+        print(result)
+    else:
+        with open(args.file, "w") as f:
+            f.write("{}\n".format(result))
