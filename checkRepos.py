@@ -14,7 +14,8 @@ import json
 
 def parseRepo(repo):
     """
-    Scans a given repository and returns reasons for why it might need looking into
+    Verifies a given GitHub repository against compliance rules
+    and returns any violations found as a list.
     """
     contents_response = requests.get(repo['contents_url'][:-7])
     contents_data = contents_response.json()
@@ -34,6 +35,22 @@ def parseRepo(repo):
 
 
 def parseOrganization(organization):
+    """
+    Parses all accessible repositories of a given GitHub organization using
+    the GitHUB API.
+
+    If the parsing was successfull the output will be formatted as follows:
+    [
+      {
+        "name":    "Misbehaving repo",
+        "url":     "https://github.com/org/repo",
+        "reasons": [ "Reason 1", "Reason 2" ]
+      }
+    ]
+
+    However, if an error occur while parsing the repository a dict containing
+    the error message will be returned instead.
+    """
     repos_response = requests.get("https://api.github.com/orgs/{}/repos".format(organization))
     repos_data = repos_response.json()
 
@@ -43,9 +60,6 @@ def parseOrganization(organization):
 
 
     try:
-        # Entries should follow this pattern: {"name": "Misbehaving repo",
-        #                                      "url":  "https://github.com/org/repo",
-        #                                      "reasons": ["reason for being suspect" ...]}
         suspects = []
         for repo in repos_data:
             reasons = parseRepo(repo)
@@ -63,6 +77,7 @@ def parseOrganization(organization):
 
 
 if __name__=="__main__":
+    # Argument parsing
     parser = argparse.ArgumentParser(description='Scan a GitHub organization for repos without READMEs or CONTRIBUTION pages.')
     parser.add_argument('organization', type=str, help='The GitHub organization to scan')
     parser.add_argument('--file', type=str, default=None, help='Specify name of file to write the output to.' \
