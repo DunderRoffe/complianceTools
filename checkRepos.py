@@ -12,7 +12,8 @@ import requests
 import argparse
 import json
 
-def parseRepo(repo):
+
+def verifyRepo(repo, rules):
     """
     Verifies a given GitHub repository against compliance rules
     and returns any violations found as a list.
@@ -23,21 +24,18 @@ def parseRepo(repo):
     files_in_content = [content['name'] for content in contents_data]
     reasons = []
 
-    required_files = ["README.md", "LICENSE", "Contributing.md"]
-    for file_name in required_files:
-        if file_name not in files_in_content:
-            reasons.append("No file named {} found".format(file_name))
-
-    if repo['fork']:
-        reasons.append("Is a fork")
+    for rule in rules:
+        reason = rule(repo, files_in_content)
+        if reason is not None:
+            reasons.append(reason)
 
     return reasons
 
 
-def parseOrganization(organization):
+def verifyOrganization(organization, rules):
     """
-    Parses all accessible repositories of a given GitHub organization using
-    the GitHUB API.
+    Verifies that all accessible repositories of a given GitHub organization
+    adheres to a set of rules.
 
     If the parsing was successfull the output will be formatted as follows:
     [
@@ -62,7 +60,7 @@ def parseOrganization(organization):
     try:
         suspects = []
         for repo in repos_data:
-            reasons = parseRepo(repo)
+            reasons = verifyRepo(repo, rules)
             if len(reasons) > 0:
                 suspect = dict()
                 suspect['name'] = repo['name']
@@ -76,8 +74,30 @@ def parseOrganization(organization):
                " limit was reached, please try again later."}
 
 
-if __name__=="__main__":
-    # Argument parsing
+def make_required_file_rule(file_name):
+    """
+    Returns a rule (function that takes two arguments: repo and files_in_repo)
+    which is used to verify if a given file_name is found in a repository
+    """
+    return lambda _, files: "No file named {} found".format(file_name) if file_name not in files else None
+
+
+def make_rules():
+    """
+    Return a list of rules
+    """
+    rules = []
+
+    required_files = ["README.md", "LICENSE", "Contributing.md"]
+    required_file_rules = [make_required_file_rule(file_name) for file_name in required_files]
+    rules += required_file_rules
+
+    no_forks_rule = lambda repo, _: "Is a fork" if repo['fork'] else None
+    rules.append(no_forks_rule)
+    return rules
+
+
+def parseArguments():
     parser = argparse.ArgumentParser(description='Scan a GitHub organization for repos without READMEs or CONTRIBUTION pages.')
     parser.add_argument('organization', type=str, help='The GitHub organization to scan')
     parser.add_argument('--file', type=str, default=None, help='Specify name of file to write the output to.' \
@@ -85,20 +105,30 @@ if __name__=="__main__":
     parser.add_argument('--pretty', action='store_true', help='Pretty print the output.')
 
     args = parser.parse_args()
-    result = parseOrganization(args.organization)
+    return args.organization, args.pretty, args.file
 
-    # Setup pretty print
-    if args.pretty:
+
+def formatJSON(to_format, pretty):
+    if pretty:
         indent = 4
     else:
         indent = None
+    return json.dumps(to_format, indent=indent)
 
-    # JSON formatting
-    result = json.dumps(result, indent=indent)
 
-    # Output result
-    if args.file is None:
-        print(result)
+def output(to_output, file_name):
+    if file_name is None:
+        print(to_output)
     else:
-        with open(args.file, "w") as f:
-            f.write("{}\n".format(result))
+        with open(file_name, "w") as f:
+            f.write("{}\n".format(to_output))
+
+
+if __name__=="__main__":
+    organization, pretty, file_name = parseArguments()
+
+    rules = make_rules
+    violations = verifyOrganization(organization, rules)
+
+    violations_json = formatJSON(violations, pretty)
+    output(violations_json, file_name)
