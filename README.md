@@ -1,5 +1,5 @@
 # complianceTools
-A set of tools used to ease the management process of Compliance Offices
+A set of tools used to ease the management of open source repos at GitHub.
 
 ## CheckRepos
 CheckRepos verifies that all repositories in a GitHub organization fulfills all
